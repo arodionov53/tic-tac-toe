@@ -1,0 +1,218 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1791557807.906557,
+    "seen": 1791559000.8877718,
+    "ast_hash": "e51880c7b4d010895c4f97bc9dbe9985",
+    "semantic_hash": "e51880c7b4d010895c4f97bc9dbe9985"
+  },
+  "index.js": {
+    "mtime": 1791294336.81436,
+    "seen": 1791559000.887774,
+    "ast_hash": "cdaba20f0c29b29aea7da13c5f7f8d76",
+    "semantic_hash": "cdaba20f0c29b29aea7da13c5f7f8d76"
+  },
+  "package.json": {
+    "mtime": 1791292989.4769824,
+    "seen": 1791559000.887776,
+    "ast_hash": "98ea630e515df0509c0f80595c7c359d",
+    "semantic_hash": "98ea630e515df0509c0f80595c7c359d"
+  },
+  ".claude/commands/opsx/apply.md": {
+    "mtime": 1791291688.921919,
+    "seen": 1791559000.887776,
+    "ast_hash": "a957d7a72774f092be25b23a915c89a7",
+    "semantic_hash": "a957d7a72774f092be25b23a915c89a7"
+  },
+  ".claude/commands/opsx/archive.md": {
+    "mtime": 1791291688.923044,
+    "seen": 1791559000.887777,
+    "ast_hash": "87923b13180e4faa88b6a8a8d04b7751",
+    "semantic_hash": "87923b13180e4faa88b6a8a8d04b7751"
+  },
+  ".claude/commands/opsx/explore.md": {
+    "mtime": 1791291688.9216924,
+    "seen": 1791559000.887778,
+    "ast_hash": "734b2313c127092244077dcba14bf868",
+    "semantic_hash": "734b2313c127092244077dcba14bf868"
+  },
+  ".claude/commands/opsx/propose.md": {
+    "mtime": 1791291688.9232543,
+    "seen": 1791559000.887778,
+    "ast_hash": "a9570540fdf1a5d22073478705f797f5",
+    "semantic_hash": "a9570540fdf1a5d22073478705f797f5"
+  },
+  ".claude/commands/opsx/sync.md": {
+    "mtime": 1791291688.9223878,
+    "seen": 1791559000.887779,
+    "ast_hash": "026755855f5363483763efc5a2b73e15",
+    "semantic_hash": "026755855f5363483763efc5a2b73e15"
+  },
+  ".claude/commands/opsx/update.md": {
+    "mtime": 1791291688.9221187,
+    "seen": 1791559000.887779,
+    "ast_hash": "36ac8697688d9cb41e65b5b080d886cf",
+    "semantic_hash": "36ac8697688d9cb41e65b5b080d886cf"
+  },
+  ".claude/skills/openspec-apply-change/SKILL.md": {
+    "mtime": 1791291688.9197707,
+    "seen": 1791559000.8877802,
+    "ast_hash": "fa7e3752d62f50f49b1850878d19a3d6",
+    "semantic_hash": "fa7e3752d62f50f49b1850878d19a3d6"
+  },
+  ".claude/skills/openspec-archive-change/SKILL.md": {
+    "mtime": 1791291688.9207163,
+    "seen": 1791559000.8877802,
+    "ast_hash": "35372ec57ea4487053b488b735fb8b4b",
+    "semantic_hash": "35372ec57ea4487053b488b735fb8b4b"
+  },
+  ".claude/skills/openspec-explore/SKILL.md": {
+    "mtime": 1791291688.9194498,
+    "seen": 1791559000.8877811,
+    "ast_hash": "07a7a581c2646e3c126b3d250a6962af",
+    "semantic_hash": "07a7a581c2646e3c126b3d250a6962af"
+  },
+  ".claude/skills/openspec-propose/SKILL.md": {
+    "mtime": 1791291688.921025,
+    "seen": 1791559000.8877819,
+    "ast_hash": "72acfb3a408ba86909c8c9a3854e2e22",
+    "semantic_hash": "72acfb3a408ba86909c8c9a3854e2e22"
+  },
+  ".claude/skills/openspec-sync-specs/SKILL.md": {
+    "mtime": 1791291688.9204836,
+    "seen": 1791559000.8877819,
+    "ast_hash": "bb4faf9753898e815adac3f5641b0107",
+    "semantic_hash": "bb4faf9753898e815adac3f5641b0107"
+  },
+  ".claude/skills/openspec-update-change/SKILL.md": {
+    "mtime": 1791291688.9201477,
+    "seen": 1791559000.8877828,
+    "ast_hash": "94f3f60985dcb07772bc27fb081c2f90",
+    "semantic_hash": "94f3f60985dcb07772bc27fb081c2f90"
+  },
+  "README.md": {
+    "mtime": 1791293661.0959945,
+    "seen": 1791559000.8877828,
+    "ast_hash": "932953e6f643a1345536fc759db4afd2",
+    "semantic_hash": "932953e6f643a1345536fc759db4afd2"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/.openspec.yaml": {
+    "mtime": 1791293971.7983308,
+    "seen": 1791559000.887784,
+    "ast_hash": "197c7f487cb9689412d71a6b06a5eaee",
+    "semantic_hash": "197c7f487cb9689412d71a6b06a5eaee"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/design.md": {
+    "mtime": 1791294190.7747066,
+    "seen": 1791559000.887784,
+    "ast_hash": "c8bdd0db8b4c8a4f11e73e51b78d8c56",
+    "semantic_hash": "c8bdd0db8b4c8a4f11e73e51b78d8c56"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/proposal.md": {
+    "mtime": 1791294080.2987385,
+    "seen": 1791559000.887785,
+    "ast_hash": "077cc4683cafa68f71f277b72652f08f",
+    "semantic_hash": "077cc4683cafa68f71f277b72652f08f"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/specs/game-loop/spec.md": {
+    "mtime": 1791294162.1720395,
+    "seen": 1791559000.887786,
+    "ast_hash": "43e9c9dab9e5485031153852ea63ad6a",
+    "semantic_hash": "43e9c9dab9e5485031153852ea63ad6a"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/specs/score-tracking/spec.md": {
+    "mtime": 1791294146.3116863,
+    "seen": 1791559000.887786,
+    "ast_hash": "bb3bc0e4617c1faeb5c791f3f1ef1d6b",
+    "semantic_hash": "bb3bc0e4617c1faeb5c791f3f1ef1d6b"
+  },
+  "openspec/changes/archive/2026-10-06-score-tracking/tasks.md": {
+    "mtime": 1791294348.7730794,
+    "seen": 1791559000.887787,
+    "ast_hash": "35c49d865fea2abde0bb81532ed50e90",
+    "semantic_hash": "35c49d865fea2abde0bb81532ed50e90"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/.openspec.yaml": {
+    "mtime": 1791291892.381617,
+    "seen": 1791559000.887787,
+    "ast_hash": "197c7f487cb9689412d71a6b06a5eaee",
+    "semantic_hash": "197c7f487cb9689412d71a6b06a5eaee"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/design.md": {
+    "mtime": 1791292297.2906117,
+    "seen": 1791559000.887788,
+    "ast_hash": "9081156fe3ba90c6a1f5167fdfd8b626",
+    "semantic_hash": "9081156fe3ba90c6a1f5167fdfd8b626"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/proposal.md": {
+    "mtime": 1791292004.8637795,
+    "seen": 1791559000.887788,
+    "ast_hash": "59ce662c960b58f621ca95e7d65337ef",
+    "semantic_hash": "59ce662c960b58f621ca95e7d65337ef"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/game-board/spec.md": {
+    "mtime": 1791292129.1502433,
+    "seen": 1791559000.887789,
+    "ast_hash": "1cb72a57716668ae2a7d4c8269387bc6",
+    "semantic_hash": "1cb72a57716668ae2a7d4c8269387bc6"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/game-loop/spec.md": {
+    "mtime": 1791292232.468365,
+    "seen": 1791559000.88779,
+    "ast_hash": "4bf015d18c7f753342f392ae4dc106db",
+    "semantic_hash": "4bf015d18c7f753342f392ae4dc106db"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/player-turns/spec.md": {
+    "mtime": 1791292147.853225,
+    "seen": 1791559000.88779,
+    "ast_hash": "79be643df25cf9d555305dd3f32dff8c",
+    "semantic_hash": "79be643df25cf9d555305dd3f32dff8c"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/win-detection/spec.md": {
+    "mtime": 1791292221.8156366,
+    "seen": 1791559000.8877912,
+    "ast_hash": "77a854cd87bee9ed67e33b850fd766f5",
+    "semantic_hash": "77a854cd87bee9ed67e33b850fd766f5"
+  },
+  "openspec/changes/archive/2026-10-06-tic-tac-toe-game/tasks.md": {
+    "mtime": 1791293243.4182901,
+    "seen": 1791559000.8877912,
+    "ast_hash": "e59c193c35a6b5b4d4c77de4fefd7ab4",
+    "semantic_hash": "e59c193c35a6b5b4d4c77de4fefd7ab4"
+  },
+  "openspec/config.yaml": {
+    "mtime": 1791291688.9235578,
+    "seen": 1791559000.887792,
+    "ast_hash": "500a0a16229f8fd0848dc7cff85d21e9",
+    "semantic_hash": "500a0a16229f8fd0848dc7cff85d21e9"
+  },
+  "openspec/specs/game-board/spec.md": {
+    "mtime": 1791293406.0592868,
+    "seen": 1791559000.887792,
+    "ast_hash": "51ab60214be7b98a76d041a14db67d04",
+    "semantic_hash": "51ab60214be7b98a76d041a14db67d04"
+  },
+  "openspec/specs/game-loop/spec.md": {
+    "mtime": 1791294491.6261122,
+    "seen": 1791559000.8877928,
+    "ast_hash": "837802cbc4d7ef5cda5c6447fbf2fd8f",
+    "semantic_hash": "837802cbc4d7ef5cda5c6447fbf2fd8f"
+  },
+  "openspec/specs/player-turns/spec.md": {
+    "mtime": 1791293444.615627,
+    "seen": 1791559000.8877928,
+    "ast_hash": "ff4a426b6c75a9d30e1e2e7074d863ed",
+    "semantic_hash": "ff4a426b6c75a9d30e1e2e7074d863ed"
+  },
+  "openspec/specs/score-tracking/spec.md": {
+    "mtime": 1791294474.352428,
+    "seen": 1791559000.887794,
+    "ast_hash": "e5e72c439ad24b4a479ead2f0e3e0cce",
+    "semantic_hash": "e5e72c439ad24b4a479ead2f0e3e0cce"
+  },
+  "openspec/specs/win-detection/spec.md": {
+    "mtime": 1791293450.0450916,
+    "seen": 1791559000.887795,
+    "ast_hash": "f4ced494146fd69b1f75b034c33ed8e0",
+    "semantic_hash": "f4ced494146fd69b1f75b034c33ed8e0"
+  }
+}

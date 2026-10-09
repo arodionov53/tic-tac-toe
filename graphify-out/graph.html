@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>graphify - graphify-out/graph.html</title>
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
+        integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
+        crossorigin="anonymous"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f1a; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  #graph { flex: 1; }
+  #sidebar { width: 280px; background: #1a1a2e; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; overflow: hidden; }
+  #search-wrap { padding: 12px; border-bottom: 1px solid #2a2a4e; }
+  #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  #search:focus { border-color: #4E79A7; }
+  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid #2a2a4e; display: none; }
+  .search-item { padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-item:hover { background: #2a2a4e; }
+  #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; }
+  #info-panel h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #info-content { font-size: 13px; color: #ccc; line-height: 1.6; }
+  #info-content .field { margin-bottom: 5px; }
+  #info-content .field b { color: #e0e0e0; }
+  #info-content .empty { color: #555; font-style: italic; }
+  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #333; }
+  .neighbor-link:hover { background: #2a2a4e; }
+  #neighbors-list { max-height: 160px; overflow-y: auto; margin-top: 4px; }
+  #legend-wrap { flex: 1; overflow-y: auto; padding: 12px; }
+  #legend-wrap h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .legend-item:hover { background: #2a2a4e; padding-left: 4px; }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-count { color: #666; font-size: 11px; }
+  #stats { padding: 10px 14px; border-top: 1px solid #2a2a4e; font-size: 11px; color: #555; }
+  #legend-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 0; }
+  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #aaa; user-select: none; }
+  #legend-controls label:hover { color: #e0e0e0; }
+  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid #3a3a5e; border-radius: 3px; background: #0f0f1a; cursor: pointer; position: relative; flex-shrink: 0; }
+  .legend-cb:checked, #select-all-cb:checked { background: #4E79A7; border-color: #4E79A7; }
+  .legend-cb:checked::after, #select-all-cb:checked::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  #select-all-cb:indeterminate { background: #4E79A7; border-color: #4E79A7; }
+  #select-all-cb:indeterminate::after { content: ''; position: absolute; left: 2px; top: 5px; width: 8px; height: 2px; background: #fff; border: none; transform: none; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Search nodes..." autocomplete="off">
+    <div id="search-results"></div>
+  </div>
+  <div id="info-panel">
+    <h3>Node Info</h3>
+    <div id="info-content"><span class="empty">Click a node to inspect it</span></div>
+  </div>
+  <div id="legend-wrap">
+    <h3>Communities</h3>
+    <div id="legend-controls">
+      <label><input type="checkbox" id="select-all-cb" checked onchange="toggleAllCommunities(!this.checked)">Select All</label>
+    </div>
+    <div id="legend"></div>
+  </div>
+  <div id="stats">68 nodes &middot; 87 edges &middot; 11 communities</div>
+</div>
+<script>
+const RAW_NODES = [{"id": "index_checkwinner", "label": "checkWinner()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "checkWinner()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index_createboard", "label": "createBoard()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "createBoard()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index_isboardfull", "label": "isBoardFull()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "isBoardFull()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index_main", "label": "main()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "main()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 3}, {"id": "index_playgame", "label": "playGame()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 31.0, "font": {"size": 12, "color": "#ffffff"}, "title": "playGame()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 7}, {"id": "index_promptmove", "label": "promptMove()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "promptMove()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index_renderboard", "label": "renderBoard()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "renderBoard()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index_renderscoreboard", "label": "renderScoreboard()", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "renderScoreboard()", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 2}, {"id": "index", "label": "index.js", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 40.0, "font": {"size": 12, "color": "#ffffff"}, "title": "index.js", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 10}, {"id": "index_win_triplets", "label": "WIN_TRIPLETS", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "WIN_TRIPLETS", "community": 1, "community_name": "Game Engine Core", "source_file": "index.js", "file_type": "code", "degree": 1}, {"id": "package", "label": "package.json", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "package.json", "community": 8, "community_name": "Package Metadata", "source_file": "package.json", "file_type": "code", "degree": 3}, {"id": "package_name", "label": "name", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "name", "community": 8, "community_name": "Package Metadata", "source_file": "package.json", "file_type": "code", "degree": 1}, {"id": "package_type", "label": "type", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "type", "community": 8, "community_name": "Package Metadata", "source_file": "package.json", "file_type": "code", "degree": 1}, {"id": "package_version", "label": "version", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "version", "community": 8, "community_name": "Package Metadata", "source_file": "package.json", "file_type": "code", "degree": 1}, {"id": "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "label": "OpenSpec Apply Change Skill", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 22.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Apply Change Skill", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-apply-change/SKILL.md", "file_type": "document", "degree": 4}, {"id": "_claude_skills_openspec_explore_skill_openspec_explore", "label": "OpenSpec Explore Skill", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Explore Skill", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-explore/SKILL.md", "file_type": "document", "degree": 2}, {"id": "_claude_skills_openspec_propose_skill_openspec_propose", "label": "OpenSpec Propose Skill", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Propose Skill", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-propose/SKILL.md", "file_type": "document", "degree": 3}, {"id": "_claude_skills_openspec_update_change_skill_openspec_update_change", "label": "OpenSpec Update Change Skill", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Update Change Skill", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-update-change/SKILL.md", "file_type": "document", "degree": 2}, {"id": "_claude_skills_openspec_archive_change_skill_openspec_archive_change", "label": "OpenSpec Archive Change Skill", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Archive Change Skill", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/skills/openspec-archive-change/SKILL.md", "file_type": "document", "degree": 3}, {"id": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "label": "OpenSpec Sync Specs Skill", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 28.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec Sync Specs Skill", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/skills/openspec-sync-specs/SKILL.md", "file_type": "document", "degree": 6}, {"id": "openspec_cli_tool", "label": "OpenSpec CLI", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 28.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OpenSpec CLI", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-apply-change/SKILL.md", "file_type": "concept", "degree": 6}, {"id": "store_selection", "label": "Store Selection Mechanism", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Store Selection Mechanism", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/skills/openspec-apply-change/SKILL.md", "file_type": "concept", "degree": 1}, {"id": "_claude_commands_opsx_apply_opsx_apply", "label": "OPSX Apply Command", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 25.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Apply Command", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/apply.md", "file_type": "document", "degree": 5}, {"id": "_claude_commands_opsx_explore_opsx_explore", "label": "OPSX Explore Command", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Explore Command", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/explore.md", "file_type": "document", "degree": 3}, {"id": "_claude_commands_opsx_propose_opsx_propose", "label": "OPSX Propose Command", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Propose Command", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/propose.md", "file_type": "document", "degree": 3}, {"id": "_claude_commands_opsx_update_opsx_update", "label": "OPSX Update Command", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Update Command", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/update.md", "file_type": "document", "degree": 3}, {"id": "fluid_workflow_integration", "label": "Fluid Workflow Integration", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Fluid Workflow Integration", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/apply.md", "file_type": "rationale", "degree": 1}, {"id": "planning_boundary", "label": "Planning Boundary Principle", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Planning Boundary Principle", "community": 0, "community_name": "OpenSpec Change Workflow", "source_file": ".claude/commands/opsx/propose.md", "file_type": "rationale", "degree": 1}, {"id": "delta_spec_format", "label": "Delta Spec Format", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Delta Spec Format", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/commands/opsx/sync.md", "file_type": "concept", "degree": 2}, {"id": "main_spec_format", "label": "Main Spec Format", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Main Spec Format", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/commands/opsx/sync.md", "file_type": "concept", "degree": 2}, {"id": "_claude_commands_opsx_archive_opsx_archive", "label": "OPSX Archive Command", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 22.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Archive Command", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/commands/opsx/archive.md", "file_type": "document", "degree": 4}, {"id": "_claude_commands_opsx_sync_opsx_sync", "label": "OPSX Sync Command", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "OPSX Sync Command", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/commands/opsx/sync.md", "file_type": "document", "degree": 2}, {"id": "intelligent_merging", "label": "Intelligent Merging Principle", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Intelligent Merging Principle", "community": 3, "community_name": "Spec Sync & Archive", "source_file": ".claude/commands/opsx/sync.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_openspec_yaml", "label": "Archived Change: Score Tracking", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Archived Change: Score Tracking", "community": 4, "community_name": "Project Configuration", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/.openspec.yaml", "file_type": "document", "degree": 2}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_openspec_yaml", "label": "Archived Change: Tic-Tac-Toe Game", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Archived Change: Tic-Tac-Toe Game", "community": 4, "community_name": "Project Configuration", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/.openspec.yaml", "file_type": "document", "degree": 2}, {"id": "openspec_config_spec_driven_schema", "label": "OpenSpec Config (spec-driven schema)", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "OpenSpec Config (spec-driven schema)", "community": 4, "community_name": "Project Configuration", "source_file": "openspec/config.yaml", "file_type": "document", "degree": 1}, {"id": "readme_tic_tac_toe_project", "label": "Tic-Tac-Toe Project", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Tic-Tac-Toe Project", "community": 4, "community_name": "Project Configuration", "source_file": "README.md", "file_type": "document", "degree": 2}, {"id": "spec_driven_workflow", "label": "Spec-Driven Workflow Schema", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Spec-Driven Workflow Schema", "community": 4, "community_name": "Project Configuration", "source_file": "openspec/config.yaml", "file_type": "rationale", "degree": 3}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "label": "Tic-Tac-Toe Game Change Proposal", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 28.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Tic-Tac-Toe Game Change Proposal", "community": 10, "community_name": "Initial Game Proposal", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/proposal.md", "file_type": "document", "degree": 6}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_board_spec_game_board_delta", "label": "Game Board Spec Delta", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Game Board Spec Delta", "community": 10, "community_name": "Initial Game Proposal", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/game-board/spec.md", "file_type": "document", "degree": 2}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_tasks_tic_tac_toe_tasks", "label": "Tic-Tac-Toe Game Tasks", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Tic-Tac-Toe Game Tasks", "community": 10, "community_name": "Initial Game Proposal", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/tasks.md", "file_type": "document", "degree": 1}, {"id": "openspec_specs_game_loop_spec_main_function", "label": "main() Function", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "main() Function", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/specs/game-loop/spec.md", "file_type": "concept", "degree": 2}, {"id": "openspec_specs_game_loop_spec_play_game", "label": "playGame() Function", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "playGame() Function", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/specs/game-loop/spec.md", "file_type": "concept", "degree": 2}, {"id": "openspec_specs_score_tracking_spec_render_scoreboard", "label": "renderScoreboard() Function", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "renderScoreboard() Function", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/specs/score-tracking/spec.md", "file_type": "concept", "degree": 3}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_proposal_score_tracking_change", "label": "Score Tracking Change Proposal", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Score Tracking Change Proposal", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/proposal.md", "file_type": "document", "degree": 3}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_specs_game_loop_spec_game_loop_delta", "label": "Game Loop Spec Delta (Score Tracking)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Game Loop Spec Delta (Score Tracking)", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/specs/game-loop/spec.md", "file_type": "document", "degree": 2}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_specs_score_tracking_spec_score_tracking_delta", "label": "Score Tracking Spec Delta", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Score Tracking Spec Delta", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/specs/score-tracking/spec.md", "file_type": "document", "degree": 3}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_tasks_score_tracking_tasks", "label": "Score Tracking Tasks", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Score Tracking Tasks", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/tasks.md", "file_type": "document", "degree": 1}, {"id": "openspec_specs_score_tracking_spec_score_tracking", "label": "Score Tracking Specification", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 22.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Score Tracking Specification", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/specs/score-tracking/spec.md", "file_type": "document", "degree": 4}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_design_inline_render_scoreboard", "label": "Inline renderScoreboard Function", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Inline renderScoreboard Function", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/design.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_design_plain_object_score_state", "label": "Plain Object for Score State", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Plain Object for Score State", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/design.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_changes_archive_2026_10_06_score_tracking_design_return_game_outcome", "label": "Return Game Outcome from playGame", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Return Game Outcome from playGame", "community": 2, "community_name": "Score Tracking Feature", "source_file": "openspec/changes/archive/2026-10-06-score-tracking/design.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_specs_game_board_spec_create_board", "label": "createBoard() Function", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "createBoard() Function", "community": 5, "community_name": "Game Board Module", "source_file": "openspec/specs/game-board/spec.md", "file_type": "concept", "degree": 1}, {"id": "openspec_specs_game_board_spec_render_board", "label": "renderBoard() Function", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "renderBoard() Function", "community": 5, "community_name": "Game Board Module", "source_file": "openspec/specs/game-board/spec.md", "file_type": "concept", "degree": 1}, {"id": "openspec_specs_game_board_spec_game_board", "label": "Game Board Specification", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 31.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Game Board Specification", "community": 5, "community_name": "Game Board Module", "source_file": "openspec/specs/game-board/spec.md", "file_type": "document", "degree": 7}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_board_flat_array", "label": "Board State as Flat Array Decision", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Board State as Flat Array Decision", "community": 5, "community_name": "Game Board Module", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/design.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_specs_player_turns_spec_prompt_move", "label": "promptMove() Function", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "promptMove() Function", "community": 6, "community_name": "Player Input Handling", "source_file": "openspec/specs/player-turns/spec.md", "file_type": "concept", "degree": 1}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_player_turns_spec_player_turns_delta", "label": "Player Turns Spec Delta", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Player Turns Spec Delta", "community": 6, "community_name": "Player Input Handling", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/player-turns/spec.md", "file_type": "document", "degree": 2}, {"id": "openspec_specs_player_turns_spec_player_turns", "label": "Player Turns Specification", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 25.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Player Turns Specification", "community": 6, "community_name": "Player Input Handling", "source_file": "openspec/specs/player-turns/spec.md", "file_type": "document", "degree": 5}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_readline_for_io", "label": "Node.js readline for Terminal I/O Decision", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Node.js readline for Terminal I/O Decision", "community": 6, "community_name": "Player Input Handling", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/design.md", "file_type": "rationale", "degree": 1}, {"id": "openspec_specs_win_detection_spec_check_winner", "label": "checkWinner() Function", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "checkWinner() Function", "community": 7, "community_name": "Win Detection Logic", "source_file": "openspec/specs/win-detection/spec.md", "file_type": "concept", "degree": 1}, {"id": "openspec_specs_win_detection_spec_is_board_full", "label": "isBoardFull() Function", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "isBoardFull() Function", "community": 7, "community_name": "Win Detection Logic", "source_file": "openspec/specs/win-detection/spec.md", "file_type": "concept", "degree": 1}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_win_detection_spec_win_detection_delta", "label": "Win Detection Spec Delta", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Win Detection Spec Delta", "community": 7, "community_name": "Win Detection Logic", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/win-detection/spec.md", "file_type": "document", "degree": 2}, {"id": "openspec_specs_win_detection_spec_win_detection", "label": "Win Detection Specification", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 25.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Win Detection Specification", "community": 7, "community_name": "Win Detection Logic", "source_file": "openspec/specs/win-detection/spec.md", "file_type": "document", "degree": 5}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_loop_spec_game_loop_delta", "label": "Game Loop Spec Delta (Initial)", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Game Loop Spec Delta (Initial)", "community": 9, "community_name": "Game Loop Spec", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/specs/game-loop/spec.md", "file_type": "document", "degree": 2}, {"id": "openspec_specs_game_loop_spec_game_loop", "label": "Game Loop Specification", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 31.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Game Loop Specification", "community": 9, "community_name": "Game Loop Spec", "source_file": "openspec/specs/game-loop/spec.md", "file_type": "document", "degree": 7}, {"id": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_single_entry_point", "label": "Single Entry Point (index.js) Decision", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Single Entry Point (index.js) Decision", "community": 9, "community_name": "Game Loop Spec", "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/design.md", "file_type": "rationale", "degree": 1}, {"id": "ref_node_readline", "label": "ref_node_readline", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ref_node_readline", "community": 1, "community_name": "Game Engine Core", "source_file": "", "file_type": "concept", "degree": 1}];
+const RAW_EDGES = [{"from": "index_playgame", "to": "index_checkwinner", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_checkwinner", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_playgame", "to": "index_createboard", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_createboard", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_playgame", "to": "index_isboardfull", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_isboardfull", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_main", "to": "index_playgame", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_main", "to": "index_renderscoreboard", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_main", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_playgame", "to": "index_renderboard", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_playgame", "to": "index_promptmove", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_playgame", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_promptmove", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_renderboard", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_renderscoreboard", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "ref_node_readline", "label": "imports_from", "title": "imports_from [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index", "to": "index_win_triplets", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "package", "to": "package_name", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "package", "to": "package_version", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "package", "to": "package_type", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_apply_opsx_apply", "to": "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "to": "fluid_workflow_integration", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "to": "store_selection", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_explore_opsx_explore", "to": "_claude_skills_openspec_explore_skill_openspec_explore", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_explore_skill_openspec_explore", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_propose_opsx_propose", "to": "_claude_skills_openspec_propose_skill_openspec_propose", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_propose_skill_openspec_propose", "to": "planning_boundary", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_propose_skill_openspec_propose", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_update_opsx_update", "to": "_claude_skills_openspec_update_change_skill_openspec_update_change", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_update_change_skill_openspec_update_change", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_archive_opsx_archive", "to": "_claude_skills_openspec_archive_change_skill_openspec_archive_change", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_archive_change_skill_openspec_archive_change", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_archive_change_skill_openspec_archive_change", "to": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_sync_opsx_sync", "to": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "to": "intelligent_merging", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "to": "delta_spec_format", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "to": "main_spec_format", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "to": "openspec_cli_tool", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_apply_opsx_apply", "to": "_claude_commands_opsx_archive_opsx_archive", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_explore_opsx_explore", "to": "_claude_commands_opsx_apply_opsx_apply", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_propose_opsx_propose", "to": "_claude_commands_opsx_apply_opsx_apply", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_update_opsx_update", "to": "_claude_commands_opsx_apply_opsx_apply", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_explore_opsx_explore", "to": "_claude_commands_opsx_propose_opsx_propose", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_update_opsx_update", "to": "_claude_commands_opsx_archive_opsx_archive", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "delta_spec_format", "to": "main_spec_format", "label": "conceptually_related_to", "title": "conceptually_related_to [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "_claude_commands_opsx_archive_opsx_archive", "to": "_claude_commands_opsx_sync_opsx_sync", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_openspec_yaml", "to": "spec_driven_workflow", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_openspec_yaml", "to": "readme_tic_tac_toe_project", "label": "conceptually_related_to", "title": "conceptually_related_to [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_openspec_yaml", "to": "spec_driven_workflow", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_openspec_yaml", "to": "readme_tic_tac_toe_project", "label": "conceptually_related_to", "title": "conceptually_related_to [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_config_spec_driven_schema", "to": "spec_driven_workflow", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_board_spec_game_board_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_loop_spec_game_loop_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_player_turns_spec_player_turns_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_win_detection_spec_win_detection_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_proposal_score_tracking_change", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "label": "references", "title": "references [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_tasks_tic_tac_toe_tasks", "to": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_proposal_tic_tac_toe_change", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_board_spec_game_board_delta", "to": "openspec_specs_game_board_spec_game_board", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_game_loop_spec_main_function", "to": "openspec_specs_game_loop_spec_play_game", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_game_loop_spec_main_function", "to": "openspec_specs_score_tracking_spec_render_scoreboard", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_design_return_game_outcome", "to": "openspec_specs_game_loop_spec_play_game", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_design_inline_render_scoreboard", "to": "openspec_specs_score_tracking_spec_render_scoreboard", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_score_tracking_spec_render_scoreboard", "to": "openspec_specs_score_tracking_spec_score_tracking", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_proposal_score_tracking_change", "to": "openspec_changes_archive_2026_10_06_score_tracking_specs_game_loop_spec_game_loop_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_proposal_score_tracking_change", "to": "openspec_changes_archive_2026_10_06_score_tracking_specs_score_tracking_spec_score_tracking_delta", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_specs_game_loop_spec_game_loop_delta", "to": "openspec_specs_game_loop_spec_game_loop", "label": "references", "title": "references [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_tasks_score_tracking_tasks", "to": "openspec_changes_archive_2026_10_06_score_tracking_specs_score_tracking_spec_score_tracking_delta", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_specs_score_tracking_spec_score_tracking_delta", "to": "openspec_specs_score_tracking_spec_score_tracking", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_score_tracking_design_plain_object_score_state", "to": "openspec_specs_score_tracking_spec_score_tracking", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_game_loop_spec_game_loop", "to": "openspec_specs_score_tracking_spec_score_tracking", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_game_board_spec_create_board", "to": "openspec_specs_game_board_spec_game_board", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_game_board_spec_render_board", "to": "openspec_specs_game_board_spec_game_board", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_board_flat_array", "to": "openspec_specs_game_board_spec_game_board", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_game_loop_spec_game_loop", "to": "openspec_specs_game_board_spec_game_board", "label": "references", "title": "references [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_player_turns_spec_player_turns", "to": "openspec_specs_game_board_spec_game_board", "label": "shares_data_with", "title": "shares_data_with [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_win_detection_spec_win_detection", "to": "openspec_specs_game_board_spec_game_board", "label": "shares_data_with", "title": "shares_data_with [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_player_turns_spec_prompt_move", "to": "openspec_specs_player_turns_spec_player_turns", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_player_turns_spec_player_turns_delta", "to": "openspec_specs_player_turns_spec_player_turns", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_readline_for_io", "to": "openspec_specs_player_turns_spec_player_turns", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "openspec_specs_game_loop_spec_game_loop", "to": "openspec_specs_player_turns_spec_player_turns", "label": "references", "title": "references [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_win_detection_spec_check_winner", "to": "openspec_specs_win_detection_spec_win_detection", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_win_detection_spec_is_board_full", "to": "openspec_specs_win_detection_spec_win_detection", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_win_detection_spec_win_detection_delta", "to": "openspec_specs_win_detection_spec_win_detection", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_specs_game_loop_spec_game_loop", "to": "openspec_specs_win_detection_spec_win_detection", "label": "references", "title": "references [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_specs_game_loop_spec_game_loop_delta", "to": "openspec_specs_game_loop_spec_game_loop", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "openspec_changes_archive_2026_10_06_tic_tac_toe_game_design_single_entry_point", "to": "openspec_specs_game_loop_spec_game_loop", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}];
+const LEGEND = [{"cid": 0, "color": "#4E79A7", "label": "OpenSpec Change Workflow", "count": 12}, {"cid": 1, "color": "#F28E2B", "label": "Game Engine Core", "count": 11}, {"cid": 2, "color": "#E15759", "label": "Score Tracking Feature", "count": 11}, {"cid": 3, "color": "#76B7B2", "label": "Spec Sync &amp; Archive", "count": 7}, {"cid": 4, "color": "#59A14F", "label": "Project Configuration", "count": 5}, {"cid": 5, "color": "#EDC948", "label": "Game Board Module", "count": 4}, {"cid": 6, "color": "#B07AA1", "label": "Player Input Handling", "count": 4}, {"cid": 7, "color": "#FF9DA7", "label": "Win Detection Logic", "count": 4}, {"cid": 8, "color": "#9C755F", "label": "Package Metadata", "count": 4}, {"cid": 9, "color": "#BAB0AC", "label": "Game Loop Spec", "count": 3}, {"cid": 10, "color": "#4E79A7", "label": "Initial Game Proposal", "count": 3}];
+
+// HTML-escape helper — prevents XSS when injecting graph data into innerHTML
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Build vis datasets
+const nodesDS = new vis.DataSet(RAW_NODES.map((n, i) => ({
+  id: n.id, label: n.label, color: n.color, size: n.size,
+  font: n.font, title: n.title,
+  // Fermat/golden-angle spiral seed positions (#3699): spreading nodes out
+  // before physics runs keeps avoidOverlap from computing near-zero-distance
+  // repulsion that blows the BarnesHut recursion into a stack overflow on large
+  // graphs. `i` is the map index — physics still settles small graphs identically.
+  x: 30 * Math.sqrt(i) * Math.cos(i * 2.4),
+  y: 30 * Math.sqrt(i) * Math.sin(i * 2.4),
+  community: n.community, community_name: n.community_name,
+  source_file: n.source_file, file_type: n.file_type, degree: n.degree,
+  member_count: n.member_count,
+})));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({
+  id: i, from: e.from, to: e.to,
+  label: '',
+  title: e.title,
+  dashes: e.dashes,
+  width: e.width,
+  color: e.color,
+  arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+})));
+
+const container = document.getElementById('graph');
+const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+  physics: {
+    enabled: true,
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: {
+      gravitationalConstant: -60,
+      centralGravity: 0.005,
+      springLength: 120,
+      springConstant: 0.08,
+      damping: 0.4,
+      avoidOverlap: 0.8,
+    },
+    stabilization: { iterations: 200, fit: true },
+  },
+  interaction: {
+    hover: true,
+    tooltipDelay: 100,
+    hideEdgesOnDrag: true,
+    navigationButtons: false,
+    keyboard: false,
+  },
+  nodes: { shape: 'dot', borderWidth: 1.5 },
+  edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
+});
+
+network.once('stabilizationIterationsDone', () => {
+  network.setOptions({ physics: { enabled: false } });
+});
+
+function showInfo(nodeId) {
+  const n = nodesDS.get(nodeId);
+  if (!n) return;
+  const neighborIds = network.getConnectedNodes(nodeId);
+  const neighborItems = neighborIds.map(nid => {
+    const nb = nodesDS.get(nid);
+    const color = nb ? nb.color.background : '#555';
+    return `<span class="neighbor-link" style="border-left-color:${esc(color)}" data-nid="${esc(nid)}">${esc(nb ? nb.label : nid)}</span>`;
+  }).join('');
+  const isMetaNode = !n.file_type && !n.source_file;
+  let html = `<div class="field"><b>${esc(n.label)}</b></div>`;
+  if (!isMetaNode) {
+    html += `<div class="field">Type: ${esc(n.file_type || 'unknown')}</div>`;
+  }
+  html += `<div class="field">Community: ${esc(n.community_name || '')}</div>`;
+  if (!isMetaNode) {
+    html += `<div class="field">Source: ${esc(n.source_file || '-')}</div>`;
+  } else if (n.member_count !== undefined && n.member_count !== null) {
+    html += `<div class="field">Members: ${esc(n.member_count)}</div>`;
+  }
+  html += `<div class="field">Degree: ${n.degree}</div>`;
+  if (neighborIds.length) {
+    html += `<div class="field" style="margin-top:8px;color:#aaa;font-size:11px">Neighbors (${neighborIds.length})</div><div id="neighbors-list">${neighborItems}</div>`;
+  }
+  document.getElementById('info-content').innerHTML = html;
+}
+
+function focusNode(nodeId) {
+  network.focus(nodeId, { scale: 1.4, animation: true });
+  network.selectNodes([nodeId]);
+  showInfo(nodeId);
+}
+
+// Neighbor links use a data attribute + one delegated listener rather than an
+// inline onclick. A node id/label sourced from a document or a scraped URL
+// (graphify add) can contain a double-quote; dropping the stringified id
+// unescaped into a quoted onclick both broke every link and allowed a hostile
+// source to inject an event handler into the local report (stored XSS, #1838).
+// esc() on data-nid keeps the value inside the attribute; the listener reads it
+// back verbatim. Bound to document so it survives the innerHTML rebuild that
+// recreates #neighbors-list on each showInfo().
+document.addEventListener('click', e => {
+  const el = e.target.closest('.neighbor-link');
+  if (el && el.dataset.nid !== undefined) focusNode(el.dataset.nid);
+});
+
+// Track hovered node — hover detection is more reliable than click params
+let hoveredNodeId = null;
+network.on('hoverNode', params => {
+  hoveredNodeId = params.node;
+  container.style.cursor = 'pointer';
+});
+network.on('blurNode', () => {
+  hoveredNodeId = null;
+  container.style.cursor = 'default';
+});
+container.addEventListener('click', () => {
+  if (hoveredNodeId !== null) {
+    showInfo(hoveredNodeId);
+    network.selectNodes([hoveredNodeId]);
+  }
+});
+network.on('click', params => {
+  if (params.nodes.length > 0) {
+    showInfo(params.nodes[0]);
+  } else if (hoveredNodeId === null) {
+    document.getElementById('info-content').innerHTML = '<span class="empty">Click a node to inspect it</span>';
+  }
+});
+
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  searchResults.innerHTML = '';
+  if (!q) { searchResults.style.display = 'none'; return; }
+  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { searchResults.style.display = 'none'; return; }
+  searchResults.style.display = 'block';
+  matches.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'search-item';
+    el.textContent = n.label;
+    el.style.borderLeft = `3px solid ${n.color.background}`;
+    el.style.paddingLeft = '8px';
+    el.onclick = () => {
+      network.focus(n.id, { scale: 1.5, animation: true });
+      network.selectNodes([n.id]);
+      showInfo(n.id);
+      searchResults.style.display = 'none';
+      searchInput.value = '';
+    };
+    searchResults.appendChild(el);
+  });
+});
+document.addEventListener('click', e => {
+  if (!searchResults.contains(e.target) && e.target !== searchInput)
+    searchResults.style.display = 'none';
+});
+
+const hiddenCommunities = new Set();
+
+const selectAllCb = document.getElementById('select-all-cb');
+
+function updateSelectAllState() {
+  const total = LEGEND.length;
+  const hidden = hiddenCommunities.size;
+  selectAllCb.checked = hidden === 0;
+  selectAllCb.indeterminate = hidden > 0 && hidden < total;
+}
+
+function toggleAllCommunities(hide) {
+  document.querySelectorAll('.legend-item').forEach(item => {
+    hide ? item.classList.add('dimmed') : item.classList.remove('dimmed');
+  });
+  document.querySelectorAll('.legend-cb').forEach(cb => {
+    cb.checked = !hide;
+  });
+  LEGEND.forEach(c => {
+    if (hide) hiddenCommunities.add(c.cid); else hiddenCommunities.delete(c.cid);
+  });
+  const updates = RAW_NODES.map(n => ({ id: n.id, hidden: hide }));
+  nodesDS.update(updates);
+  updateSelectAllState();
+}
+
+const legendEl = document.getElementById('legend');
+LEGEND.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'legend-cb';
+  cb.checked = true;
+  cb.addEventListener('change', (e) => {
+    e.stopPropagation();
+    if (cb.checked) {
+      hiddenCommunities.delete(c.cid);
+      item.classList.remove('dimmed');
+    } else {
+      hiddenCommunities.add(c.cid);
+      item.classList.add('dimmed');
+    }
+    const updates = RAW_NODES
+      .filter(n => n.community === c.cid)
+      .map(n => ({ id: n.id, hidden: !cb.checked }));
+    nodesDS.update(updates);
+    updateSelectAllState();
+  });
+  item.innerHTML = `<div class="legend-dot" style="background:${c.color}"></div>
+    <span class="legend-label">${c.label}</span>
+    <span class="legend-count">${c.count}</span>`;
+  item.prepend(cb);
+  item.onclick = (e) => {
+    if (e.target === cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+  };
+  legendEl.appendChild(item);
+});
+</script>
+<script>
+// Render hyperedges as shaded regions
+const hyperedges = [{"id": "archived_changes_spec_driven", "label": "Archived Changes Using Spec-Driven Schema", "nodes": ["openspec_changes_archive_2026_10_06_score_tracking_openspec_yaml", "openspec_changes_archive_2026_10_06_tic_tac_toe_game_openspec_yaml", "spec_driven_workflow"], "relation": "implement", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "openspec/changes/archive/2026-10-06-score-tracking/.openspec.yaml"}, {"id": "command_skill_mirror", "label": "OPSX Commands Mirror OpenSpec Skills", "nodes": ["_claude_commands_opsx_apply_opsx_apply", "_claude_commands_opsx_archive_opsx_archive", "_claude_commands_opsx_explore_opsx_explore", "_claude_commands_opsx_propose_opsx_propose", "_claude_commands_opsx_sync_opsx_sync", "_claude_commands_opsx_update_opsx_update", "_claude_skills_openspec_apply_change_skill_openspec_apply_change", "_claude_skills_openspec_archive_change_skill_openspec_archive_change", "_claude_skills_openspec_explore_skill_openspec_explore", "_claude_skills_openspec_propose_skill_openspec_propose", "_claude_skills_openspec_sync_specs_skill_openspec_sync_specs", "_claude_skills_openspec_update_change_skill_openspec_update_change"], "relation": "implement", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/opsx/apply.md"}, {"id": "game_loop_orchestration_flow", "label": "Game Loop Orchestration Flow", "nodes": ["openspec_specs_game_loop_spec_main_function", "openspec_specs_game_loop_spec_play_game", "openspec_specs_score_tracking_spec_render_scoreboard"], "relation": "participate_in", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "openspec/changes/archive/2026-10-06-score-tracking/tasks.md"}, {"id": "openspec_change_lifecycle", "label": "OpenSpec Change Lifecycle", "nodes": ["_claude_commands_opsx_explore_opsx_explore", "_claude_commands_opsx_propose_opsx_propose", "_claude_commands_opsx_apply_opsx_apply", "_claude_commands_opsx_sync_opsx_sync", "_claude_commands_opsx_archive_opsx_archive", "_claude_commands_opsx_update_opsx_update"], "relation": "participate_in", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/opsx/explore.md"}, {"id": "score_tracking_design_decisions", "label": "Score Tracking Design Decisions", "nodes": ["openspec_changes_archive_2026_10_06_score_tracking_design_return_game_outcome", "openspec_changes_archive_2026_10_06_score_tracking_design_plain_object_score_state", "openspec_changes_archive_2026_10_06_score_tracking_design_inline_render_scoreboard"], "relation": "form", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "openspec/changes/archive/2026-10-06-score-tracking/design.md"}, {"id": "tic_tac_toe_core_capabilities", "label": "Core Tic-Tac-Toe Game Capabilities", "nodes": ["openspec_specs_game_board_spec_game_board", "openspec_specs_player_turns_spec_player_turns", "openspec_specs_win_detection_spec_win_detection", "openspec_specs_game_loop_spec_game_loop"], "relation": "form", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "openspec/changes/archive/2026-10-06-tic-tac-toe-game/proposal.md"}];
+// afterDrawing passes ctx already transformed to network coordinate space.
+// Draw node positions raw — no manual pan/zoom/DPR math needed.
+
+// Andrew's monotone chain. Returns the hull in counter-clockwise order, which
+// is what the perimeter must be traced in. Collinear and duplicate points
+// collapse to the extremes, so degenerate member sets render as a segment
+// rather than a zero-area crossed path.
+function convexHull(pts) {
+    const p = pts.slice().sort((a, b) => (a.x - b.x) || (a.y - b.y));
+    if (p.length < 3) return p;
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const build = seq => {
+        const out = [];
+        for (const q of seq) {
+            while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+            out.push(q);
+        }
+        out.pop();
+        return out;
+    };
+    const hull = build(p).concat(build(p.slice().reverse()));
+    return hull.length >= 3 ? hull : p;
+}
+network.on('afterDrawing', function(ctx) {
+    hyperedges.forEach(h => {
+        const positions = h.nodes
+            .map(nid => network.getPositions([nid])[nid])
+            .filter(p => p !== undefined);
+        if (positions.length < 2) return;
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = '#6366f1';
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Centroid and expanded hull in network coordinates.
+        // The perimeter must follow hull order, not h.nodes order: tracing the
+        // raw member order self-intersects whenever the layout does not happen
+        // to place members in angular order, filling as crossed wedges.
+        const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+        const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+        const hull = convexHull(positions);
+        const expanded = hull.map(p => ({
+            x: cx + (p.x - cx) * 1.15,
+            y: cy + (p.y - cy) * 1.15
+        }));
+        ctx.moveTo(expanded[0].x, expanded[0].y);
+        expanded.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        // Label
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#4f46e5';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.label, cx, cy - 5);
+        ctx.restore();
+    });
+});
+</script>
+</body>
+</html>
